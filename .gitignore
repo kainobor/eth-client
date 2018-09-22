@@ -1,0 +1,35 @@
+.DS_Store
+
+# Intellij project
+*.iml
+/.idea
+
+# Folders
+/bin
+/out
+_obj
+_test
+
+# Compiled Object files, Static and Dynamic libs (Shared Objects)
+*.o
+*.a
+*.so
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.dylib
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage , pprof, log, etc
+*.out
+*.test
+*.prof
+*.pprof
+*.log
+
+# exported data
+*.csv
