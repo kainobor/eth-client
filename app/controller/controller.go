@@ -84,32 +84,7 @@ func (ctrl *Controller) SendEth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go func() {
-		var txHash string
-		txHash, err = ctrl.bc.SendTransaction(t)
-		if err != nil {
-			errMsg := "error while sending transaction"
-			ctrl.sendError(w, errMsg, "error", err)
-			return
-		}
-		t.SetHash(txHash)
-
-		// For renew information about block
-		if err = ctrl.bc.RenewTransaction(t); err != nil {
-			errMsg := "error while renewing transaction"
-			ctrl.sendError(w, errMsg, "error", err)
-			return
-		}
-		t.FixateCreatedAt()
-
-		go ctrl.saveTransaction(t)
-	}()
-
-	if err != nil {
-		errMsg := "error while sending transaction"
-		ctrl.sendError(w, errMsg, "transaction", t, "error", err)
-		return
-	}
+	go ctrl.processTransaction(t)
 
 	ctrl.sendResponse(w, "transaction sent for processing", true)
 }
@@ -172,6 +147,25 @@ func (ctrl *Controller) sendResponse(w http.ResponseWriter, msg string, isSucces
 		ctrl.log.Errorw("error while response marshaling", "resp", resp, "err", err)
 	}
 	w.Write(respJSON)
+}
+
+func (ctrl *Controller) processTransaction(t *blockchain.Transaction) {
+	var txHash string
+	txHash, err := ctrl.bc.SendTransaction(t)
+	if err != nil {
+		ctrl.log.Errorw("error while sending transaction", "transaction", t, "error", err)
+		return
+	}
+	t.SetHash(txHash)
+
+	// For getting information about block
+	if err = ctrl.bc.RenewTransaction(t); err != nil {
+		ctrl.log.Errorw("error while renewing transaction", "transaction", t, "error", err)
+		return
+	}
+	t.FixateCreatedAt()
+
+	go ctrl.saveTransaction(t)
 }
 
 func (ctrl *Controller) saveTransaction(t *blockchain.Transaction) {
