@@ -57,6 +57,9 @@ const (
 
 // NewTransaction is constructor for transactions
 func NewTransaction(from, to, value string) (*Transaction, error) {
+	from = helper.TrimHexPrefix(from)
+	to = helper.TrimHexPrefix(to)
+
 	bigValue, ok := helper.HexToBig(value)
 	if !ok {
 		return nil, fmt.Errorf("can't parsing `%s` to big.Int", value)

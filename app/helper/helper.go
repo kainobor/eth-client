@@ -30,20 +30,14 @@ func HexToBig(hex string) (*big.Int, bool) {
 
 // IsHexAddress validates that string is valid ETH address
 func IsHexAddress(s string) bool {
-	if hasHexPrefix(s) {
-		s = s[2:]
-	}
+	s = TrimHexPrefix(s)
 
 	return len(s) == AddressLength && isHex(s)
 }
 
 // IsHex validates whether each byte is valid hexadecimal string.
 func IsHexString(s string) bool {
-	if hasHexPrefix(s) {
-		s = s[2:]
-	}
-
-	return isHex(s)
+	return isHex(TrimHexPrefix(s))
 }
 
 func isHex(s string) bool {
@@ -54,6 +48,15 @@ func isHex(s string) bool {
 	}
 
 	return true
+}
+
+// TrimHexPrefix trims prefix like '0x' or '0X'.
+func TrimHexPrefix(s string) string {
+	if hasHexPrefix(s) {
+		return s[2:]
+	}
+
+	return s
 }
 
 // hasHexPrefix validates str begins with '0x' or '0X'.
