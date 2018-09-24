@@ -1,0 +1,26 @@
+[server]
+port = 80
+
+[blockchain]
+ip = "127.0.0.1"
+port = 7545
+
+[storage]
+ip = "127.0.0.1"
+port = 5432
+user = "postgres"
+password = "password"
+dbName = "eth_client"
+pageSize = 1000
+
+[handler]
+transactionInterval = "1s"
+curBlockInterval = "1s"
+
+[logger]
+infoPaths = ["./log/info.log", "stdout"]
+errPaths = ["./log/err.log", "stderr"]
+
+[confirmation]
+successConfirmationsAmount = 6
+forLastConfirmationsAmount = 3
