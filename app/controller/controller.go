@@ -6,13 +6,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/kainobor/eth-client/app/blockchain"
+	"github.com/kainobor/eth-client/app/config"
 	"github.com/kainobor/eth-client/app/handler"
 	"github.com/kainobor/eth-client/app/helper"
 	"github.com/kainobor/eth-client/app/logger"
 	"github.com/kainobor/eth-client/app/storage"
-
-	"github.com/kainobor/eth-client/app/blockchain"
-	"github.com/kainobor/eth-client/app/config"
 )
 
 type (
