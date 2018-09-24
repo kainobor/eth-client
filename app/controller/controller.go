@@ -2,6 +2,7 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -26,6 +27,11 @@ type (
 	// ErrorResponse returns when something went wrong
 	ErrorResponse struct {
 		Error string `json:"error"`
+	}
+
+	// SuccessResponse returns when all is well
+	SuccessResponse struct {
+		Message string `json:"message"`
 	}
 
 	// LastTransaction is special representation of transaction for GetLast method's JSON
@@ -63,6 +69,12 @@ func (ctrl *Controller) SendEth(w http.ResponseWriter, r *http.Request) {
 	to := params.Get(toSendArg)
 	amount := params.Get(amountSendArg)
 
+	if err = ctrl.validateSendRequest(w, from, to, amount); err != nil {
+		errMsg := "invalid request: " + err.Error()
+		ctrl.sendError(w, errMsg, "request", r.Body, "error", err)
+		return
+	}
+
 	var t *blockchain.Transaction
 
 	t, err = blockchain.NewTransaction(from, to, amount)
@@ -99,9 +111,7 @@ func (ctrl *Controller) SendEth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctrl.sendSuccess(w)
-
-	return
+	ctrl.sendResponse(w, "transaction sent for processing", true)
 }
 
 // GetLast returns response for GetLast method
@@ -143,23 +153,25 @@ func (ctrl *Controller) GetLast(w http.ResponseWriter, r *http.Request) {
 
 func (ctrl *Controller) sendError(w http.ResponseWriter, errMsg string, keysAndValues ...interface{}) {
 	ctrl.log.Errorw(errMsg, keysAndValues...)
-
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(400)
-
-	resp := &ErrorResponse{Error: errMsg}
-	respJSON, err := json.Marshal(resp)
-	if err != nil {
-		ctrl.log.Errorw("error while error response marshaling", "resp", resp, "err", err)
-	}
-	w.Write(respJSON)
+	ctrl.sendResponse(w, errMsg, false)
 }
 
-func (ctrl *Controller) sendSuccess(w http.ResponseWriter) {
+func (ctrl *Controller) sendResponse(w http.ResponseWriter, msg string, isSuccess bool) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(200) // success
 
-	w.Write([]byte("send to pending"))
+	var resp interface{}
+	if isSuccess {
+		resp = &SuccessResponse{Message: msg}
+	} else {
+		resp = &ErrorResponse{Error: msg}
+	}
+
+	respJSON, err := json.Marshal(resp)
+	if err != nil {
+		ctrl.log.Errorw("error while response marshaling", "resp", resp, "err", err)
+	}
+	w.Write(respJSON)
 }
 
 func (ctrl *Controller) saveTransaction(t *blockchain.Transaction) {
@@ -172,4 +184,17 @@ func (ctrl *Controller) saveTransaction(t *blockchain.Transaction) {
 	}
 
 	ctrl.h.AddTransaction(t)
+}
+
+func (ctrl *Controller) validateSendRequest(w http.ResponseWriter, from, to, amount string) error {
+	switch {
+	case !helper.IsHexAddress(from):
+		return fmt.Errorf("wrong sender address in request")
+	case !helper.IsHexAddress(to):
+		return fmt.Errorf("wrong sender address in request")
+	case !helper.IsHex(amount):
+		return fmt.Errorf("invalid amount format")
+	}
+
+	return nil
 }
