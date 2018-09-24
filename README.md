@@ -18,3 +18,5 @@ Flag ``-h`` can help you with that.
 After that you can send get requests to ``/SendEth`` with params ``from``, ``to`` and ``amount``.
 Where ``from`` is address af sender, ``to`` is address of receiver and ``amount`` is value sent with this transaction.
 All need to be hex-strings.
+
+Also you can send get requests to ``/GetLast`` without params for getting transactions with less than 3 confirmations and never showed by this method.
