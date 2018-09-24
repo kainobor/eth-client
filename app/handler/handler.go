@@ -244,3 +244,34 @@ func (h *Handler) currentTransactionConfirmations(t *blockchain.Transaction) int
 
 	return curConfirmationsBig.Sub(&curBlock, &transBlock).Int64()
 }
+
+func (h *Handler) ProcessTransaction(t *blockchain.Transaction) {
+	var txHash string
+	txHash, err := h.bc.SendTransaction(t)
+	if err != nil {
+		h.log.Errorw("error while sending transaction", "transaction", t, "error", err)
+		return
+	}
+	t.SetHash(txHash)
+
+	// For getting information about block
+	if err = h.bc.RenewTransaction(t); err != nil {
+		h.log.Errorw("error while renewing transaction", "transaction", t, "error", err)
+		return
+	}
+	t.FixateCreatedAt()
+
+	h.saveTransaction(t)
+}
+
+func (h *Handler) saveTransaction(t *blockchain.Transaction) {
+	if err := h.st.SaveEntryTransaction(t); err != nil {
+		h.log.Errorw("error while saving entry transaction", "transaction", t, "error", err)
+	}
+
+	if err := h.st.SaveWithdrawTransaction(t); err != nil {
+		h.log.Errorw("error while saving withdraw transaction", "transaction", t, "error", err)
+	}
+
+	h.AddTransaction(t)
+}

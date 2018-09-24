@@ -84,7 +84,7 @@ func (ctrl *Controller) SendEth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go ctrl.processTransaction(t)
+	go ctrl.h.ProcessTransaction(t)
 
 	ctrl.sendResponse(w, "transaction sent for processing", true)
 }
@@ -147,37 +147,6 @@ func (ctrl *Controller) sendResponse(w http.ResponseWriter, msg string, isSucces
 		ctrl.log.Errorw("error while response marshaling", "resp", resp, "err", err)
 	}
 	w.Write(respJSON)
-}
-
-func (ctrl *Controller) processTransaction(t *blockchain.Transaction) {
-	var txHash string
-	txHash, err := ctrl.bc.SendTransaction(t)
-	if err != nil {
-		ctrl.log.Errorw("error while sending transaction", "transaction", t, "error", err)
-		return
-	}
-	t.SetHash(txHash)
-
-	// For getting information about block
-	if err = ctrl.bc.RenewTransaction(t); err != nil {
-		ctrl.log.Errorw("error while renewing transaction", "transaction", t, "error", err)
-		return
-	}
-	t.FixateCreatedAt()
-
-	go ctrl.saveTransaction(t)
-}
-
-func (ctrl *Controller) saveTransaction(t *blockchain.Transaction) {
-	if err := ctrl.st.SaveEntryTransaction(t); err != nil {
-		ctrl.log.Errorw("error while saving entry transaction", "transaction", t, "error", err)
-	}
-
-	if err := ctrl.st.SaveWithdrawTransaction(t); err != nil {
-		ctrl.log.Errorw("error while saving withdraw transaction", "transaction", t, "error", err)
-	}
-
-	ctrl.h.AddTransaction(t)
 }
 
 func (ctrl *Controller) validateSendRequest(from, to, amount string) error {
