@@ -16,6 +16,7 @@ pageSize = 1000
 [handler]
 transactionInterval = "1s"
 curBlockInterval = "1s"
+balanceInterval = "1s"
 
 [logger]
 infoPaths = ["./log/info.log", "stdout"]

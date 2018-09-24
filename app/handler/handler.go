@@ -61,6 +61,13 @@ func (h *Handler) Handle(cc *config.ConfirmationConfig) error {
 		}
 	}()
 
+	go func() {
+		tcr := time.NewTicker(h.config.BalanceInterval)
+		for range tcr.C {
+			h.handleBalances()
+		}
+	}()
+
 	return nil
 }
 
@@ -134,6 +141,33 @@ func (h *Handler) handleCurrentBlock() {
 	}
 
 	h.SetCurBlockNum(*num)
+}
+
+func (h *Handler) handleBalances() {
+	for {
+		balMap, err := h.st.LoadAllBalances()
+		if err != nil {
+			h.log.Errorw("can't load balances", "err", err)
+			continue
+		}
+
+		for addr, bal := range balMap {
+			newBal, err := h.bc.GetBalance(addr)
+			if err != nil {
+				h.log.Errorw("can't get balance from blockchain", "addr", addr, "err", err)
+				continue
+			}
+
+			if newBal.Cmp(bal) == 0 {
+				continue
+			}
+
+			balString := helper.BigToHex(*newBal)
+			if err := h.st.UpsertBalance(addr, balString); err != nil {
+				h.log.Errorw("can't upsert balance", "addr", addr, "balance", balString, "err", err)
+			}
+		}
+	}
 }
 
 // updateBalances gets sender and receiver balances from network and saves it to DB

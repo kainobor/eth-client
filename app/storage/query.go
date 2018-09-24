@@ -17,4 +17,12 @@ const (
 	UpdateTransactionStatusSQL = `UPDATE eth_client.transactions_entry SET status = $1 WHERE id = $2`
 	// UpdateTransactionsShowedSQL is batch updating of showed value
 	UpdateTransactionsShowedSQL = `UPDATE eth_client.transactions_entry SET showed = true WHERE id IN (%s)`
+	// LoadAllBalances returns all addresses that used by app with their balances
+	LoadAllBalances = `SELECT a.address, b.balance FROM (
+    SELECT address FROM eth_client.eth_balance
+    UNION SELECT from_addr FROM eth_client.transactions_entry
+    UNION SELECT to_addr FROM eth_client.transactions_entry
+) AS a
+LEFT JOIN (SELECT address, balance FROM eth_client.eth_balance) AS b
+ON a.address = b.address;`
 )

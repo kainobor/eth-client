@@ -2,7 +2,6 @@ package controller
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -64,17 +63,6 @@ func (ctrl *Controller) SendEth(w http.ResponseWriter, r *http.Request) {
 	to := params.Get(toSendArg)
 	amount := params.Get(amountSendArg)
 
-	if err = ctrl.addBalanceIfNeed(from); err != nil {
-		errMsg := "saving sender balance error"
-		ctrl.sendError(w, errMsg, "addr", from, "error", err)
-		return
-	}
-	if err = ctrl.addBalanceIfNeed(to); err != nil {
-		errMsg := "saving recipient balance error"
-		ctrl.sendError(w, errMsg, "addr", to, "error", err)
-		return
-	}
-
 	var t *blockchain.Transaction
 
 	t, err = blockchain.NewTransaction(from, to, amount)
@@ -84,43 +72,34 @@ func (ctrl *Controller) SendEth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var txHash string
-	txHash, err = ctrl.bc.SendTransaction(t)
+	go func() {
+		var txHash string
+		txHash, err = ctrl.bc.SendTransaction(t)
+		if err != nil {
+			errMsg := "error while sending transaction"
+			ctrl.sendError(w, errMsg, "error", err)
+			return
+		}
+		t.SetHash(txHash)
+
+		// For renew information about block
+		if err = ctrl.bc.RenewTransaction(t); err != nil {
+			errMsg := "error while renewing transaction"
+			ctrl.sendError(w, errMsg, "error", err)
+			return
+		}
+		t.FixateCreatedAt()
+
+		go ctrl.saveTransaction(t)
+	}()
+
 	if err != nil {
 		errMsg := "error while sending transaction"
-		ctrl.sendError(w, errMsg, "error", err)
-		return
-	}
-	t.SetHash(txHash)
-
-	if err = ctrl.bc.RenewTransaction(t); err != nil {
-		errMsg := "error while renewing transaction"
-		ctrl.sendError(w, errMsg, "error", err)
-		return
-	}
-	t.FixateCreatedAt()
-
-	if err != nil {
-		errMsg := "error while sending transaction"
 		ctrl.sendError(w, errMsg, "transaction", t, "error", err)
 		return
 	}
 
-	if err = ctrl.st.SaveEntryTransaction(t); err != nil {
-		errMsg := "error while saving entry transaction"
-		ctrl.sendError(w, errMsg, "transaction", t, "error", err)
-		return
-	}
-
-	if err = ctrl.st.SaveWithdrawTransaction(t); err != nil {
-		errMsg := "error while saving withdraw transaction"
-		ctrl.sendError(w, errMsg, "transaction", t, "error", err)
-		return
-	}
-
-	ctrl.h.AddTransaction(t)
-
-	ctrl.sendSuccess([]byte(txHash), w)
+	ctrl.sendSuccess(w)
 
 	return
 }
@@ -176,22 +155,21 @@ func (ctrl *Controller) sendError(w http.ResponseWriter, errMsg string, keysAndV
 	w.Write(respJSON)
 }
 
-func (ctrl *Controller) sendSuccess(data []byte, w http.ResponseWriter) {
+func (ctrl *Controller) sendSuccess(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(200) // success
 
-	w.Write(data)
+	w.Write([]byte("send to pending"))
 }
 
-func (ctrl *Controller) addBalanceIfNeed(addr string) error {
-	bal, err := ctrl.bc.GetBalance(addr)
-	if err != nil {
-		return fmt.Errorf("can't get `%s` balance: %v", addr, err)
+func (ctrl *Controller) saveTransaction(t *blockchain.Transaction) {
+	if err := ctrl.st.SaveEntryTransaction(t); err != nil {
+		ctrl.log.Errorw("error while saving entry transaction", "transaction", t, "error", err)
 	}
 
-	if err := ctrl.st.UpsertBalance(addr, helper.BigToHex(*bal)); err != nil {
-		return fmt.Errorf("error while saving `%s` balance: %v", addr, err)
+	if err := ctrl.st.SaveWithdrawTransaction(t); err != nil {
+		ctrl.log.Errorw("error while saving withdraw transaction", "transaction", t, "error", err)
 	}
 
-	return nil
+	ctrl.h.AddTransaction(t)
 }

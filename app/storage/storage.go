@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/kainobor/eth-client/app/blockchain"
@@ -182,6 +183,37 @@ func (st *Storage) loadTransactions(query string, args ...interface{}) (map[stri
 	}
 
 	return txs, nil
+}
+
+// LoadAllBalances returns map with all balances
+func (st *Storage) LoadAllBalances() (map[string]*big.Int, error) {
+	balMap := make(map[string]*big.Int)
+
+	rows, err := st.db.Query(LoadAllBalances)
+	if err != nil {
+		return balMap, fmt.Errorf("error while selecting all balances: %v", err)
+	}
+
+	for rows.Next() {
+		var bal, addr *string
+		err = rows.Scan(&addr, &bal)
+		if err != nil {
+			return balMap, fmt.Errorf("error while scanning balance: %v", err)
+		}
+
+		bigBal := big.NewInt(0)
+		var ok = true
+		if bal != nil {
+			bigBal, ok = helper.HexToBig(*bal)
+		}
+		if !ok {
+			bigBal = big.NewInt(0)
+		}
+
+		balMap[*addr] = bigBal
+	}
+
+	return balMap, nil
 }
 
 func connectString(config *config.StorageConfig) string {

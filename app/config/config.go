@@ -45,6 +45,7 @@ type (
 	HandlerConfig struct {
 		TransactionInterval time.Duration
 		CurBlockInterval    time.Duration
+		BalanceInterval     time.Duration
 	}
 
 	// ConfirmationConfig that contains data about acceptance of confirmations
