@@ -69,7 +69,7 @@ func (ctrl *Controller) SendEth(w http.ResponseWriter, r *http.Request) {
 	to := params.Get(toSendArg)
 	amount := params.Get(amountSendArg)
 
-	if err = ctrl.validateSendRequest(w, from, to, amount); err != nil {
+	if err = ctrl.validateSendRequest(from, to, amount); err != nil {
 		errMsg := "invalid request: " + err.Error()
 		ctrl.sendError(w, errMsg, "request", r.Body, "error", err)
 		return
@@ -186,13 +186,13 @@ func (ctrl *Controller) saveTransaction(t *blockchain.Transaction) {
 	ctrl.h.AddTransaction(t)
 }
 
-func (ctrl *Controller) validateSendRequest(w http.ResponseWriter, from, to, amount string) error {
+func (ctrl *Controller) validateSendRequest(from, to, amount string) error {
 	switch {
 	case !helper.IsHexAddress(from):
 		return fmt.Errorf("wrong sender address in request")
 	case !helper.IsHexAddress(to):
 		return fmt.Errorf("wrong sender address in request")
-	case !helper.IsHex(amount):
+	case !helper.IsHexString(amount):
 		return fmt.Errorf("invalid amount format")
 	}
 
